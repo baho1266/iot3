@@ -155,6 +155,7 @@ function App() {
               <div style={cardStyle(d)}>
                 <h2 style={{ marginTop: 0 }}>{node}</h2>
                 <p><strong>Time:</strong> {d.time}</p>
+
                 <p>
                   <strong>Temp:</strong> {d.t}°C{" "}
                   {d.t > d.temp_th && (
@@ -163,7 +164,29 @@ function App() {
                     </span>
                   )}
                 </p>
+
                 <p><strong>Humidity:</strong> {d.h}%</p>
+
+                {/* LED STATUS */}
+                <p>
+                  <strong>LED:</strong>{" "}
+                  {d.led === "ON" ? (
+                    <span style={{ color: "green", fontWeight: "bold" }}>🟢 ON</span>
+                  ) : (
+                    <span style={{ color: "gray" }}>⚪ OFF</span>
+                  )}
+                </p>
+
+                {/* FAN STATUS */}
+                <p>
+                  <strong>Fan:</strong>{" "}
+                  {d.fan === "ON" ? (
+                    <span style={{ color: "green", fontWeight: "bold" }}>🟢 ON</span>
+                  ) : (
+                    <span style={{ color: "gray" }}>⚪ OFF</span>
+                  )}
+                </p>
+
                 <p>
                   <strong>Gas Voltage:</strong> {d.ao_v}V{" "}
                   {d.ao_v > d.gas_th && (
