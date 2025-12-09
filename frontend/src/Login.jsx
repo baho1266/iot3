@@ -17,13 +17,14 @@ export default function Login({ setUser }) {
       .then((data) => {
         if (data.status === "error") {
           setError(data.msg);
-        } else {
-          const userInfo = { username: data.username, role: data.role };
-          localStorage.setItem("user", JSON.stringify(userInfo));
-          setUser(userInfo);
+          return;
         }
+
+        // SAVE logged-in user globally
+        localStorage.setItem("user", JSON.stringify(data.user));
+        setUser(data.user);
       })
-      .catch(() => setError("Server unreachable"));
+      .catch(() => setError("Server error. Backend offline?"));
   };
 
   return (
@@ -37,8 +38,6 @@ export default function Login({ setUser }) {
         style={{ padding: "10px", margin: "10px" }}
       />
 
-      <br />
-
       <input
         type="password"
         placeholder="Password"
@@ -46,8 +45,6 @@ export default function Login({ setUser }) {
         onChange={(e) => setPassword(e.target.value)}
         style={{ padding: "10px", margin: "10px" }}
       />
-
-      <br />
 
       <button
         onClick={handleLogin}
@@ -58,7 +55,7 @@ export default function Login({ setUser }) {
           borderRadius: "6px",
           border: "none",
           marginTop: "10px",
-          cursor: "pointer"
+          cursor: "pointer",
         }}
       >
         Login
