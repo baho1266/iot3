@@ -1,12 +1,36 @@
 import { useEffect, useState } from "react";
 import GraphCard from "./GraphCard";
+import Login from "./Login";
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
 function App() {
+  // -------------------------
+  // AUTHENTICATION STATE
+  // -------------------------
+  const [user, setUser] = useState(() => {
+    return JSON.parse(localStorage.getItem("user")) || null;
+  });
+
+  const logout = () => {
+    localStorage.removeItem("user");
+    setUser(null);
+  };
+
+  // If not logged in → show Login page
+  if (!user) {
+    return <Login setUser={setUser} />;
+  }
+
+  // -------------------------
+  // DASHBOARD STATE
+  // -------------------------
   const [data, setData] = useState({});
   const [history, setHistory] = useState({});
 
+  // -------------------------
+  // FETCH REALTIME DATA
+  // -------------------------
   useEffect(() => {
     const interval = setInterval(() => {
       fetch(`${API}/realtime`)
@@ -54,7 +78,11 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // -------------------------
+  // SEND COMMAND (ADMIN ONLY)
+  // -------------------------
   const sendCommand = (device, action) => {
+    if (user.role !== "admin") return;
     fetch(`${API}/command`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -62,7 +90,12 @@ function App() {
     });
   };
 
+  // -------------------------
+  // UPDATE LIMITS (ADMIN ONLY)
+  // -------------------------
   const updateLimits = (device) => {
+    if (user.role !== "admin") return;
+
     const temp = parseFloat(
       document.getElementById(`${device}-temp-limit`).value
     );
@@ -81,6 +114,9 @@ function App() {
     });
   };
 
+  // -------------------------
+  // CARD STYLE
+  // -------------------------
   const cardStyle = (device) => {
     const now = Date.now();
     const age = now - (device._timestamp || 0);
@@ -114,6 +150,9 @@ function App() {
     fontWeight: "600",
   };
 
+  // -------------------------
+  // MAIN RETURN
+  // -------------------------
   return (
     <div
       style={{
@@ -123,16 +162,47 @@ function App() {
         minHeight: "100vh",
       }}
     >
-      <h1
-        style={{
-          textAlign: "center",
-          marginBottom: "30px",
-          color: "#1e90ff",
-        }}
-      >
-        🌐 Smart IoT Dashboard
-      </h1>
+      {/* HEADER */}
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <h1
+          style={{
+            textAlign: "left",
+            marginBottom: "30px",
+            color: "#1e90ff",
+          }}
+        >
+          🌐 Smart IoT Dashboard
+        </h1>
 
+        <div
+          style={{
+            textAlign: "right",
+            marginBottom: "20px",
+            marginRight: "20px",
+          }}
+        >
+          <p>
+            Logged in as:{" "}
+            <strong style={{ color: "#1e90ff" }}>{user.username}</strong> (
+            {user.role})
+          </p>
+          <button
+            onClick={logout}
+            style={{
+              padding: "8px 12px",
+              background: "#dc3545",
+              color: "white",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+            }}
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+
+      {/* DEVICE CARDS */}
       <div
         style={{
           display: "flex",
@@ -152,6 +222,7 @@ function App() {
                 alignItems: "center",
               }}
             >
+              {/* DEVICE CARD */}
               <div style={cardStyle(d)}>
                 <h2 style={{ marginTop: 0 }}>{node}</h2>
                 <p><strong>Time:</strong> {d.time}</p>
@@ -167,7 +238,6 @@ function App() {
 
                 <p><strong>Humidity:</strong> {d.h}%</p>
 
-                {/* LED STATUS */}
                 <p>
                   <strong>LED:</strong>{" "}
                   {d.led === "ON" ? (
@@ -177,7 +247,6 @@ function App() {
                   )}
                 </p>
 
-                {/* FAN STATUS */}
                 <p>
                   <strong>Fan:</strong>{" "}
                   {d.fan === "ON" ? (
@@ -202,84 +271,95 @@ function App() {
                 <p><strong>Temp Limit:</strong> {d.temp_th}°C</p>
                 <p><strong>Gas Limit:</strong> {d.gas_th}V</p>
 
-                <label>
-                  New Temp Limit:
-                  <input
-                    id={`${node}-temp-limit`}
-                    type="number"
-                    defaultValue={d.temp_th}
-                    step="0.1"
-                    style={{
-                      marginLeft: "10px",
-                      padding: "6px",
-                      width: "80px",
-                      borderRadius: "6px",
-                    }}
-                  />
-                </label>
+                {/* ADMIN-ONLY LIMIT FIELDS */}
+                {user.role === "admin" && (
+                  <>
+                    <label>
+                      New Temp Limit:
+                      <input
+                        id={`${node}-temp-limit`}
+                        type="number"
+                        defaultValue={d.temp_th}
+                        step="0.1"
+                        style={{
+                          marginLeft: "10px",
+                          padding: "6px",
+                          width: "80px",
+                          borderRadius: "6px",
+                        }}
+                      />
+                    </label>
 
-                <br /><br />
+                    <br /><br />
 
-                <label>
-                  New Gas Limit:
-                  <input
-                    id={`${node}-gas-limit`}
-                    type="number"
-                    defaultValue={d.gas_th}
-                    step="0.01"
-                    style={{
-                      marginLeft: "18px",
-                      padding: "6px",
-                      width: "80px",
-                      borderRadius: "6px",
-                    }}
-                  />
-                </label>
+                    <label>
+                      New Gas Limit:
+                      <input
+                        id={`${node}-gas-limit`}
+                        type="number"
+                        defaultValue={d.gas_th}
+                        step="0.01"
+                        style={{
+                          marginLeft: "18px",
+                          padding: "6px",
+                          width: "80px",
+                          borderRadius: "6px",
+                        }}
+                      />
+                    </label>
 
-                <br /><br />
+                    <br /><br />
 
-                <button
-                  onClick={() => updateLimits(node)}
-                  style={{ ...buttonStyle, background: "#007bff", color: "white" }}
-                >
-                  Save Limits
-                </button>
+                    <button
+                      onClick={() => updateLimits(node)}
+                      style={{ ...buttonStyle, background: "#007bff", color: "white" }}
+                    >
+                      Save Limits
+                    </button>
 
-                <hr />
+                    <hr />
+                  </>
+                )}
 
-                <h3>Controls</h3>
+                {/* ADMIN-ONLY CONTROLS */}
+                {user.role === "admin" && (
+                  <>
+                    <h3>Controls</h3>
 
-                <button
-                  onClick={() => sendCommand(node, "LED_ON")}
-                  style={{ ...buttonStyle, background: "#28a745", color: "white" }}
-                >
-                  LED ON
-                </button>
+                    <button
+                      onClick={() => sendCommand(node, "LED_ON")}
+                      style={{ ...buttonStyle, background: "#28a745", color: "white" }}
+                    >
+                      LED ON
+                    </button>
 
-                <button
-                  onClick={() => sendCommand(node, "LED_OFF")}
-                  style={{ ...buttonStyle, background: "#dc3545", color: "white" }}
-                >
-                  LED OFF
-                </button>
+                    <button
+                      onClick={() => sendCommand(node, "LED_OFF")}
+                      style={{ ...buttonStyle, background: "#dc3545", color: "white" }}
+                    >
+                      LED OFF
+                    </button>
 
-                <br />
+                    <br />
 
-                <button
-                  onClick={() => sendCommand(node, "FAN_ON")}
-                  style={{ ...buttonStyle, background: "#17a2b8", color: "white" }}
-                >
-                  FAN ON
-                </button>
+                    <button
+                      onClick={() => sendCommand(node, "FAN_ON")}
+                      style={{ ...buttonStyle, background: "#17a2b8", color: "white" }}
+                    >
+                      FAN ON
+                    </button>
 
-                <button
-                  onClick={() => sendCommand(node, "FAN_OFF")}
-                  style={{ ...buttonStyle, background: "#6c757d", color: "white" }}
-                >
-                  FAN OFF
-                </button>
+                    <button
+                      onClick={() => sendCommand(node, "FAN_OFF")}
+                      style={{ ...buttonStyle, background: "#6c757d", color: "white" }}
+                    >
+                      FAN OFF
+                    </button>
+                  </>
+                )}
               </div>
 
+              {/* GRAPHS */}
               {history[node] && (
                 <GraphCard
                   title="Temperature (°C)"
@@ -306,5 +386,3 @@ function App() {
 }
 
 export default App;
-
-
