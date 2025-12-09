@@ -7,16 +7,19 @@ export default function Dashboard({
   logout,
   sendCommand,
   updateLimits,
-  goToUserManager,   // 🔥 REQUIRED NEW PROP
+  goUsers
 }) {
+  // -----------------------------------
+  // CARD STYLE FUNCTION
+  // -----------------------------------
   const cardStyle = (device) => {
     const now = Date.now();
     const age = now - (device._timestamp || 0);
 
     let bg = "#ffffff";
-    if (age > 5000) bg = "#e8e8e8";
-    if (device.ao_v > device.gas_th) bg = "#ffe0e0";
-    if (device.t > device.temp_th) bg = "#ffe9d6";
+    if (age > 5000) bg = "#e8e8e8";        // No data recently
+    if (device.ao_v > device.gas_th) bg = "#ffe0e0"; // Gas alert
+    if (device.t > device.temp_th) bg = "#ffe9d6";   // Temp alert
 
     return {
       width: "360px",
@@ -41,6 +44,9 @@ export default function Dashboard({
     fontWeight: "600",
   };
 
+  // -----------------------------------
+  // MAIN UI
+  // -----------------------------------
   return (
     <div
       style={{
@@ -52,9 +58,10 @@ export default function Dashboard({
     >
       {/* HEADER */}
       <div style={{ display: "flex", justifyContent: "space-between" }}>
+        
+        {/* TITLE */}
         <h1
           style={{
-            textAlign: "left",
             marginBottom: "30px",
             color: "#1e90ff",
           }}
@@ -62,37 +69,33 @@ export default function Dashboard({
           🌐 Smart IoT Dashboard
         </h1>
 
-        <div
-          style={{
-            textAlign: "right",
-            marginRight: "20px",
-            marginBottom: "20px",
-          }}
-        >
-          {/* ADMIN ONLY BUTTON */}
-          {user.role === "admin" && (
-            <button
-              onClick={goToUserManager}
-              style={{
-                padding: "8px 12px",
-                background: "#6f42c1",
-                color: "white",
-                borderRadius: "6px",
-                border: "none",
-                cursor: "pointer",
-                marginRight: "12px",
-              }}
-            >
-              Manage Users
-            </button>
-          )}
-
+        {/* USER INFO + BUTTONS */}
+        <div style={{ textAlign: "right", marginRight: "20px" }}>
           <p>
             Logged in as:{" "}
             <strong style={{ color: "#1e90ff" }}>{user.username}</strong> (
             {user.role})
           </p>
 
+          {/* ADMIN ONLY — OPEN USER MANAGER */}
+          {user.role === "admin" && (
+            <button
+              onClick={goUsers}
+              style={{
+                padding: "8px 12px",
+                background: "#1e90ff",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                marginRight: "10px",
+              }}
+            >
+              Manage Users
+            </button>
+          )}
+
+          {/* LOGOUT BUTTON */}
           <button
             onClick={logout}
             style={{
@@ -137,9 +140,7 @@ export default function Dashboard({
                 <p>
                   <strong>Temp:</strong> {d.t}°C{" "}
                   {d.t > d.temp_th && (
-                    <span style={{ color: "red", fontWeight: "bold" }}>
-                      🔥 HIGH
-                    </span>
+                    <span style={{ color: "red", fontWeight: "bold" }}>🔥 HIGH</span>
                   )}
                 </p>
 
@@ -178,7 +179,7 @@ export default function Dashboard({
                 <p><strong>Temp Limit:</strong> {d.temp_th}°C</p>
                 <p><strong>Gas Limit:</strong> {d.gas_th}V</p>
 
-                {/* ADMIN LIMIT UI */}
+                {/* ADMIN — CHANGE LIMITS */}
                 {user.role === "admin" && (
                   <>
                     <label>
@@ -232,7 +233,7 @@ export default function Dashboard({
                   </>
                 )}
 
-                {/* ADMIN CONTROLS */}
+                {/* ADMIN — CONTROL BUTTONS */}
                 {user.role === "admin" && (
                   <>
                     <h3>Controls</h3>
@@ -311,4 +312,3 @@ export default function Dashboard({
     </div>
   );
 }
-
