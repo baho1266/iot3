@@ -1,39 +1,29 @@
 import { useState } from "react";
 
+const API = import.meta.env.VITE_API_BASE_URL;
+
 export default function Login({ setUser }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const handleLogin = () => {
-    // Load saved users from localStorage
-    const savedUsers = JSON.parse(localStorage.getItem("users")) || {};
-
-    // Default admin user
-    const defaultUsers = {
-      admin: { password: "admin123", role: "admin" },
-      user: { password: "user123", role: "user" }
-    };
-
-    // Merge default + saved users
-    const USERS = { ...defaultUsers, ...savedUsers };
-
-    // Username must exist
-    if (!USERS[username]) {
-      setError("Invalid username or password");
-      return;
-    }
-
-    // Password must match
-    if (USERS[username].password !== password) {
-      setError("Invalid username or password");
-      return;
-    }
-
-    // Login success
-    const userInfo = { username, role: USERS[username].role };
-    localStorage.setItem("user", JSON.stringify(userInfo));
-    setUser(userInfo);
+    fetch(`${API}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status === "error") {
+          setError(data.msg);
+        } else {
+          const userInfo = { username: data.username, role: data.role };
+          localStorage.setItem("user", JSON.stringify(userInfo));
+          setUser(userInfo);
+        }
+      })
+      .catch(() => setError("Server unreachable"));
   };
 
   return (
