@@ -1,63 +1,55 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const API = import.meta.env.VITE_API_BASE_URL;
 
 export default function UserManager({ goBack }) {
+  const [list, setList] = useState({});
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("user");
-  const [message, setMessage] = useState("");
+  const [msg, setMsg] = useState("");
 
-  const saveUser = () => {
+  useEffect(() => {
+    fetch(`${API}/users`)
+      .then(res => res.json())
+      .then(setList);
+  }, []);
+
+  const save = () => {
     fetch(`${API}/add_user`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password, role }),
+      body: JSON.stringify({ username, password, role })
     })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === "error") {
-          setMessage(data.msg);
-        } else {
-          setMessage(`User "${username}" created successfully!`);
-        }
-      });
+      .then(r => r.json())
+      .then(d => setMsg(d.msg));
   };
 
   return (
-    <div style={{ textAlign: "center", marginTop: "60px" }}>
-      <h2>Create New User</h2>
+    <div style={{ textAlign: "center" }}>
 
-      <input
-        placeholder="Username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-      />
+      <h2>👥 User Manager</h2>
 
+      <h3>Existing Users</h3>
+      <pre>{JSON.stringify(list, null, 2)}</pre>
+
+      <h3>Add New User</h3>
+
+      <input placeholder="Username" onChange={e => setUsername(e.target.value)} />
       <br />
-
-      <input
-        placeholder="Password"
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-
+      <input placeholder="Password" type="password" onChange={e => setPassword(e.target.value)} />
       <br />
-
-      <select value={role} onChange={(e) => setRole(e.target.value)}>
+      <select onChange={e => setRole(e.target.value)}>
         <option value="admin">Admin</option>
         <option value="user">User</option>
       </select>
 
       <br /><br />
 
-      <button onClick={saveUser}>Save User</button>
-      <button onClick={goBack} style={{ marginLeft: "10px" }}>
-        Back
-      </button>
+      <button onClick={save}>Create</button>
+      <button onClick={goBack} style={{ marginLeft: "10px" }}>Back</button>
 
-      {message && <p>{message}</p>}
+      {msg && <p>{msg}</p>}
     </div>
   );
 }
