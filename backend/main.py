@@ -7,30 +7,29 @@ import os
 
 USERS_FILE = "users.json"
 
-# -----------------------------------------------------
-# USER STORAGE
-# -----------------------------------------------------
-def load_users():
-    if os.path.exists(USERS_FILE):
-        with open(USERS_FILE, "r") as f:
-            return json.load(f)
-    else:
-        default_users = {
-            "admin": {"password": "admin123", "role": "admin"},
-            "user": {"password": "user123", "role": "user"}
-        }
-        save_users(default_users)
-        return default_users
-
-def save_users(users):
+# --------------------------------------
+# LOAD USERS FROM FILE (PERSISTENT)
+# --------------------------------------
+if os.path.exists(USERS_FILE):
+    with open(USERS_FILE, "r") as f:
+        users = json.load(f)
+else:
+    users = {
+        "admin": {"password": "admin123", "role": "admin"},
+        "user":  {"password": "user123",  "role": "user"}
+    }
     with open(USERS_FILE, "w") as f:
         json.dump(users, f, indent=4)
 
-users = load_users()
 
-# -----------------------------------------------------
+def save_users():
+    with open(USERS_FILE, "w") as f:
+        json.dump(users, f, indent=4)
+
+
+# --------------------------------------
 # FASTAPI APP
-# -----------------------------------------------------
+# --------------------------------------
 app = FastAPI()
 
 origins = [
@@ -46,72 +45,59 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -----------------------------------------------------
-# DEVICE STORAGE
-# -----------------------------------------------------
 latest_data = {}
-system_limits = {}     
+system_limits = {}
 
-# -----------------------------------------------------
-# MODELS
-# -----------------------------------------------------
-class Command(BaseModel):
-    device: str
-    action: str
 
-class LimitUpdate(BaseModel):
-    device: str
-    temp_th: float | None = None
-    gas_th: float | None = None
-
+# --------------------------------------
+# USER MODELS
+# --------------------------------------
 class LoginRequest(BaseModel):
     username: str
     password: str
 
-class NewUser(BaseModel):
+
+class AddUserRequest(BaseModel):
     username: str
     password: str
     role: str
 
-# -----------------------------------------------------
-# LOGIN ENDPOINT
-# -----------------------------------------------------
+
+# --------------------------------------
+# USER ROUTES
+# --------------------------------------
 @app.post("/login")
-def login(req: LoginRequest):
-    global users
-    if req.username in users and users[req.username]["password"] == req.password:
-        return {"success": True, "role": users[req.username]["role"]}
-    return {"success": False, "message": "Invalid username or password"}
+def login(data: LoginRequest):
+    username = data.username
+    password = data.password
 
-# -----------------------------------------------------
-# CREATE NEW USER
-# -----------------------------------------------------
-@app.post("/create_user")
-def create_user(new_user: NewUser):
-    global users
+    if username in users and users[username]["password"] == password:
+        return {"status": "ok", "username": username, "role": users[username]["role"]}
 
-    if new_user.username in users:
-        return {"success": False, "message": "User already exists"}
+    return {"status": "error", "msg": "Invalid username or password"}
 
-    users[new_user.username] = {
-        "password": new_user.password,
-        "role": new_user.role
-    }
 
-    save_users(users)
+@app.post("/add_user")
+def add_user(data: AddUserRequest):
+    username = data.username
 
-    return {"success": True, "message": "User created successfully"}
+    if username in users:
+        return {"status": "error", "msg": "User already exists!"}
 
-# -----------------------------------------------------
-# RETURN ALL USERS
-# -----------------------------------------------------
-@app.get("/users")
-def get_users():
+    users[username] = {"password": data.password, "role": data.role}
+    save_users()
+
+    return {"status": "ok", "msg": "User created!"}
+
+
+@app.get("/list_users")
+def list_users():
     return users
 
-# -----------------------------------------------------
-# EXISTING REALTIME, MQTT, AND LIMIT API
-# -----------------------------------------------------
+
+# --------------------------------------
+# IOT SENSOR PARSING
+# --------------------------------------
 def parse_sensor_message(raw: str):
     result = {}
     try:
@@ -123,16 +109,11 @@ def parse_sensor_message(raw: str):
         time_str = parts.split()[0]
         result["time"] = time_str
 
-        sensors_str = parts[len(time_str):].strip()
-        sensor_parts = sensors_str.split("|")
+        sensor_parts = parts[len(time_str):].strip().split("|")
 
         for part in sensor_parts:
-            part = part.strip()
             if ":" in part:
                 key, val = part.split(":", 1)
-                key = key.strip()
-                val = val.strip()
-
                 val = (
                     val.replace("C", "")
                     .replace("%", "")
@@ -143,14 +124,11 @@ def parse_sensor_message(raw: str):
                 )
 
                 try:
-                    if "." in val:
-                        val = float(val)
-                    else:
-                        val = int(val)
+                    val = float(val) if "." in val else int(val)
                 except:
                     pass
 
-                result[key.lower()] = val
+                result[key.strip().lower()] = val
 
     except Exception as e:
         print("Parse error:", e)
@@ -158,13 +136,15 @@ def parse_sensor_message(raw: str):
     return result
 
 
+# --------------------------------------
+# MQTT CALLBACKS
+# --------------------------------------
 def on_connect(client, userdata, flags, rc):
     print("MQTT connected:", rc)
     client.subscribe("iot/pi/data")
 
 
 def on_message(client, userdata, msg):
-    global latest_data, system_limits
     raw = msg.payload.decode()
     parsed = parse_sensor_message(raw)
 
@@ -180,6 +160,9 @@ def on_message(client, userdata, msg):
         latest_data[node] = parsed
 
 
+# --------------------------------------
+# MQTT SETUP
+# --------------------------------------
 mqtt_client = mqtt.Client()
 mqtt_client.username_pw_set("p_user", "P_user123")
 mqtt_client.tls_set()
@@ -190,19 +173,37 @@ mqtt_client.on_message = on_message
 mqtt_client.connect("08d5c716cf9f46518abcda4d565e5141.s1.eu.hivemq.cloud", 8883)
 mqtt_client.loop_start()
 
+
+# --------------------------------------
+# COMMAND MODELS & ROUTES
+# --------------------------------------
+class Command(BaseModel):
+    device: str
+    action: str
+
+
+class LimitUpdate(BaseModel):
+    device: str
+    temp_th: float | None = None
+    gas_th: float | None = None
+
+
 @app.get("/")
 def root():
     return {"message": "Backend working!"}
+
 
 @app.get("/realtime")
 def realtime():
     return latest_data
 
+
 @app.post("/command")
 def send_command(cmd: Command):
-    msg = f"{cmd.device}:{cmd.action.replace('_',' ')}"
+    msg = f"{cmd.device}:{cmd.action.replace('_', ' ')}"
     mqtt_client.publish("iot/pi/command", msg)
-    return {"sent": msg}
+    return {"status": "ok", "sent": msg}
+
 
 @app.post("/set_limits")
 def set_limits(limit: LimitUpdate):
@@ -219,4 +220,4 @@ def set_limits(limit: LimitUpdate):
         system_limits[device]["gas_th"] = limit.gas_th
         mqtt_client.publish("iot/pi/command", f"{device}:GAS={limit.gas_th}")
 
-    return {"device": device, "limits": system_limits[device]}
+    return {"status": "ok", "limits": system_limits[device]}
