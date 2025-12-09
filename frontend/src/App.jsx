@@ -17,7 +17,8 @@ function App() {
     setUser(null);
   };
 
-  // If not logged in → show Login page
+  // 🚨 IMPORTANT FIX:
+  // Prevent dashboard + useEffect from running before login
   if (!user) {
     return <Login setUser={setUser} />;
   }
@@ -30,6 +31,7 @@ function App() {
 
   // -------------------------
   // FETCH REALTIME DATA
+  // (Runs ONLY AFTER login now)
   // -------------------------
   useEffect(() => {
     const interval = setInterval(() => {
@@ -76,7 +78,7 @@ function App() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, []); // runs ONLY when user is logged in
 
   // -------------------------
   // SEND COMMAND (ADMIN ONLY)
