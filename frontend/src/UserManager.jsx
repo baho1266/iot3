@@ -1,22 +1,22 @@
 import { useState, useEffect } from "react";
 
-export default function UserManager({ goBack }) {
+export default function UserManager({ goBack, currentUser }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("user");
   const [message, setMessage] = useState("");
   const [users, setUsers] = useState({});
 
-  // Load users on page load
+  // Load users on mount
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("users")) || {};
     setUsers(stored);
   }, []);
 
-  // Create user
+  // Save (create or overwrite) user
   const saveUser = () => {
     if (!username || !password) {
-      setMessage("Username and password required.");
+      setMessage("Username and password are required.");
       return;
     }
 
@@ -25,21 +25,39 @@ export default function UserManager({ goBack }) {
     stored[username] = { password, role };
 
     localStorage.setItem("users", JSON.stringify(stored));
-    setUsers(stored); // update list
-    setMessage(`User "${username}" created/updated successfully!`);
+    setUsers(stored);
 
-    // Reset form
+    setMessage(`User "${username}" saved successfully!`);
+
     setUsername("");
     setPassword("");
     setRole("user");
   };
 
-  // Delete user
+  // Count current admins
+  const countAdmins = (userObj) => {
+    return Object.values(userObj).filter((u) => u.role === "admin").length;
+  };
+
+  // Delete user with protections
   const deleteUser = (userToDelete) => {
     let stored = JSON.parse(localStorage.getItem("users")) || {};
 
-    delete stored[userToDelete];
+    // 1️⃣ Prevent deleting yourself
+    if (userToDelete === currentUser.username) {
+      setMessage("❌ You cannot delete your own account!");
+      return;
+    }
 
+    // 2️⃣ Prevent deleting the last admin
+    const adminCount = countAdmins(stored);
+    if (stored[userToDelete].role === "admin" && adminCount === 1) {
+      setMessage("❌ You cannot delete the last remaining admin!");
+      return;
+    }
+
+    // Safe to delete
+    delete stored[userToDelete];
     localStorage.setItem("users", JSON.stringify(stored));
     setUsers(stored);
 
@@ -50,7 +68,7 @@ export default function UserManager({ goBack }) {
     <div style={{ textAlign: "center", marginTop: "60px" }}>
       <h2>Create / Manage Users</h2>
 
-      {/* CREATE USER FORM */}
+      {/* FORM */}
       <input
         placeholder="Username"
         value={username}
@@ -111,7 +129,7 @@ export default function UserManager({ goBack }) {
         Back to Dashboard
       </button>
 
-      {message && <p style={{ color: "green" }}>{message}</p>}
+      {message && <p style={{ color: "red", fontWeight: "bold" }}>{message}</p>}
 
       <hr style={{ margin: "40px 0" }} />
 
