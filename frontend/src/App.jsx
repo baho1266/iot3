@@ -9,14 +9,12 @@ export default function App() {
   // -----------------------------
   // AUTH STATE
   // -----------------------------
-  const [user, setUser] = useState(() =>
-    JSON.parse(localStorage.getItem("user")) || null
-  );
+  const [user, setUser] = useState(() => {
+    const saved = localStorage.getItem("user");
+    return saved ? JSON.parse(saved) : null;
+  });
 
-  // -----------------------------
-  // PAGE STATE
-  // dashboard | users
-  // -----------------------------
+  // which page: "dashboard" | "users"
   const [page, setPage] = useState("dashboard");
 
   // -----------------------------
@@ -25,6 +23,9 @@ export default function App() {
   const [data, setData] = useState({});
   const [history, setHistory] = useState({});
 
+  // -----------------------------
+  // LOGOUT
+  // -----------------------------
   const logout = () => {
     localStorage.removeItem("user");
     setUser(null);
@@ -37,7 +38,7 @@ export default function App() {
   // FETCH DEVICE DATA WHEN LOGGED IN
   // -----------------------------
   useEffect(() => {
-    if (!user) return;
+    if (!user) return; // do nothing if not logged in
 
     const interval = setInterval(() => {
       fetch(`${API}/realtime`)
@@ -45,7 +46,7 @@ export default function App() {
         .then((json) => {
           const now = Date.now();
 
-          // Add timestamp to each device
+          // tag timestamp
           for (let node in json) {
             json[node]._timestamp = now;
           }
@@ -57,7 +58,6 @@ export default function App() {
 
             Object.keys(json).forEach((node) => {
               const d = json[node];
-
               if (!updated[node]) {
                 updated[node] = { time: [], temp: [], gas: [] };
               }
@@ -65,12 +65,21 @@ export default function App() {
               updated[node].time.push(now);
               updated[node].temp.push(d.t);
               updated[node].gas.push(d.ao_v);
+
+              // optional: limit history length
+              if (updated[node].time.length > 500) {
+                updated[node].time.shift();
+                updated[node].temp.shift();
+                updated[node].gas.shift();
+              }
             });
 
             return updated;
           });
         })
-        .catch(() => {});
+        .catch(() => {
+          // ignore errors for now
+        });
     }, 1000);
 
     return () => clearInterval(interval);
@@ -80,49 +89,58 @@ export default function App() {
   // ADMIN COMMANDS
   // -----------------------------
   const sendCommand = (device, action) => {
-    if (user.role !== "admin") return;
+    if (!user || user.role !== "admin") return;
 
     fetch(`${API}/command`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ device, action }),
-    });
+    }).catch(() => {});
   };
 
   // -----------------------------
   // LIMIT UPDATE (ADMIN ONLY)
   // -----------------------------
   const updateLimits = (device) => {
-    if (user.role !== "admin") return;
+    if (!user || user.role !== "admin") return;
 
     const temp = parseFloat(
-      document.getElementById(`${device}-temp-limit`).value
+      document.getElementById(`${device}-temp-limit`)?.value
     );
     const gas = parseFloat(
-      document.getElementById(`${device}-gas-limit`).value
+      document.getElementById(`${device}-gas-limit`)?.value
     );
 
     fetch(`${API}/set_limits`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ device, temp_th: temp, gas_th: gas }),
-    });
+      body: JSON.stringify({
+        device,
+        temp_th: temp,
+        gas_th: gas,
+      }),
+    }).catch(() => {});
   };
 
   // -----------------------------
   // CONDITIONAL RENDERING
   // -----------------------------
-  if (!user)
+  if (!user) {
+    // not logged in → show login page
     return <Login setUser={setUser} />;
+  }
 
-  if (page === "users")
+  if (page === "users") {
+    // admin user management page
     return (
       <UserManager
         currentUser={user}
         goBack={() => setPage("dashboard")}
       />
     );
+  }
 
+  // default → dashboard
   return (
     <Dashboard
       user={user}
@@ -135,4 +153,3 @@ export default function App() {
     />
   );
 }
-
