@@ -10,8 +10,9 @@ export default function Dashboard({
   goUsers
 }) {
   // -----------------------------
-  // SAFETY GUARD (CRITICAL)
+  // SAFETY GUARD
   // -----------------------------
+  // We keep this, but we also add safeguards below just in case.
   if (!user) {
     return (
       <div style={{ padding: "40px", textAlign: "center" }}>
@@ -71,13 +72,15 @@ export default function Dashboard({
         <div style={{ textAlign: "right" }}>
           <p>
             Logged in as:{" "}
+            {/* --- FIX APPLIED HERE: Added ?. --- */}
             <strong style={{ color: "#1e90ff" }}>
-              {user.username}
+              {user?.username || "User"}
             </strong>{" "}
-            ({user.role})
+            ({user?.role})
           </p>
 
-          {user.role === "admin" && (
+          {/* --- FIX APPLIED HERE: Added ?. --- */}
+          {user?.role === "admin" && (
             <button
               onClick={goUsers}
               style={{
@@ -129,7 +132,8 @@ export default function Dashboard({
                 <p><strong>Humidity:</strong> {d.h} %</p>
                 <p><strong>Gas:</strong> {d.ao_v} V</p>
 
-                {user.role === "admin" && (
+                {/* --- FIX APPLIED HERE: Added ?. --- */}
+                {user?.role === "admin" && (
                   <>
                     <hr />
                     <button
