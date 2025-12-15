@@ -12,16 +12,16 @@ export default function Dashboard({
   // -----------------------------
   // 1. SAFE VARIABLES (The Fix)
   // -----------------------------
-  // We define these strings BEFORE the HTML renders.
-  // If user is null, these default to "Guest" and "Viewer".
+  // We extract these values safely at the very top.
+  // This guarantees that "safeUsername" is always a string, never undefined.
   const safeUsername = user && user.username ? user.username : "Guest";
   const safeRole = user && user.role ? user.role : "Viewer";
   const isAdmin = user && user.role === "admin";
 
   // -----------------------------
-  // 2. SAFETY GUARD
+  // 2. LOADING STATE
   // -----------------------------
-  // Optional: keep this if you want to block access entirely when loading
+  // If the user object is totally missing, show a loader.
   if (!user) {
     return (
       <div style={{ padding: "40px", textAlign: "center" }}>
@@ -41,11 +41,11 @@ export default function Dashboard({
     const age = now - timestamp;
 
     let bg = "#ffffff";
-    if (age > 5000) bg = "#e8e8e8";
+    if (age > 5000) bg = "#e8e8e8"; // Grey if offline
     
-    // Safety checks
-    if (device.ao_v > device.gas_th) bg = "#ffe0e0";
-    if (device.t > device.temp_th) bg = "#ffe9d6";
+    // Threshold warnings
+    if (device.ao_v > device.gas_th) bg = "#ffe0e0"; // Red for Gas
+    if (device.t > device.temp_th) bg = "#ffe9d6";   // Orange for Temp
 
     return {
       width: "360px",
@@ -81,7 +81,7 @@ export default function Dashboard({
     >
       {/* HEADER */}
       <div style={{ display: "flex", justifyContent: "space-between" }}>
-        {/* Updated Title to V6 */}
+        {/* Title updated to V6 */}
         <h1 style={{ color: "#1e90ff" }}>🌐 Smart IoT Dashboard (V6)</h1>
 
         <div style={{ textAlign: "right" }}>
@@ -93,6 +93,7 @@ export default function Dashboard({
             ({safeRole})
           </p>
 
+          {/* SAFE ADMIN CHECK */}
           {isAdmin && (
             <button
               onClick={goUsers}
@@ -145,6 +146,7 @@ export default function Dashboard({
                 <p><strong>Humidity:</strong> {d.h} %</p>
                 <p><strong>Gas:</strong> {d.ao_v} V</p>
 
+                {/* SAFE ADMIN CHECK FOR BUTTONS */}
                 {isAdmin && (
                   <>
                     <hr />
