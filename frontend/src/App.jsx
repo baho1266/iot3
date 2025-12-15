@@ -10,8 +10,12 @@ export default function App() {
   // AUTH STATE
   // -----------------------------
   const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem("user");
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem("user");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
 
   // which page: "dashboard" | "users"
@@ -35,10 +39,10 @@ export default function App() {
   };
 
   // -----------------------------
-  // FETCH DEVICE DATA WHEN LOGGED IN
+  // FETCH DEVICE DATA
   // -----------------------------
   useEffect(() => {
-    if (!user) return; // do nothing if not logged in
+    if (!user || !user.username) return;
 
     const interval = setInterval(() => {
       fetch(`${API}/realtime`)
@@ -46,10 +50,9 @@ export default function App() {
         .then((json) => {
           const now = Date.now();
 
-          // tag timestamp
-          for (let node in json) {
+          Object.keys(json).forEach((node) => {
             json[node]._timestamp = now;
-          }
+          });
 
           setData(json);
 
@@ -63,10 +66,9 @@ export default function App() {
               }
 
               updated[node].time.push(now);
-              updated[node].temp.push(d.t);
-              updated[node].gas.push(d.ao_v);
+              updated[node].temp.push(d.t ?? 0);
+              updated[node].gas.push(d.ao_v ?? 0);
 
-              // optional: limit history length
               if (updated[node].time.length > 500) {
                 updated[node].time.shift();
                 updated[node].temp.shift();
@@ -77,9 +79,7 @@ export default function App() {
             return updated;
           });
         })
-        .catch(() => {
-          // ignore errors for now
-        });
+        .catch(() => {});
     }, 1000);
 
     return () => clearInterval(interval);
@@ -99,7 +99,7 @@ export default function App() {
   };
 
   // -----------------------------
-  // LIMIT UPDATE (ADMIN ONLY)
+  // UPDATE LIMITS
   // -----------------------------
   const updateLimits = (device) => {
     if (!user || user.role !== "admin") return;
@@ -123,15 +123,13 @@ export default function App() {
   };
 
   // -----------------------------
-  // CONDITIONAL RENDERING
+  // RENDER LOGIC (CRITICAL FIX)
   // -----------------------------
-  if (!user) {
-    // not logged in → show login page
+  if (!user || !user.username) {
     return <Login setUser={setUser} />;
   }
 
   if (page === "users") {
-    // admin user management page
     return (
       <UserManager
         currentUser={user}
@@ -140,7 +138,6 @@ export default function App() {
     );
   }
 
-  // default → dashboard
   return (
     <Dashboard
       user={user}
