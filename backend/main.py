@@ -10,7 +10,7 @@ app = FastAPI()
 
 origins = [
     "http://localhost:5173",
-    "https://iot5.netlify.app"
+    "https://iot-backend-phi.vercel.app/"
 ]
 
 app.add_middleware(
