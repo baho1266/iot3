@@ -1,6 +1,9 @@
 import { useState } from "react";
 
-const API = import.meta.env.VITE_API_BASE_URL;
+const USERS = {
+  admin: { password: "admin123", role: "admin" },
+  user:  { password: "user123",  role: "user" }
+};
 
 export default function Login({ setUser }) {
   const [username, setUsername] = useState("");
@@ -8,30 +11,20 @@ export default function Login({ setUser }) {
   const [error, setError] = useState("");
 
   const handleLogin = () => {
-    // Connects to your Python Backend
-    fetch(`${API}/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status === "error") {
-          setError(data.msg);
-          return;
-        }
+    if (!USERS[username] || USERS[username].password !== password) {
+      setError("Invalid username or password");
+      return;
+    }
 
-        // Saves user to browser memory so they stay logged in
-        localStorage.setItem("user", JSON.stringify(data.user));
-        setUser(data.user);
-      })
-      .catch(() => {
-        setError("Login failed: Cannot reach server");
-      });
+    const role = USERS[username].role;
+
+    const userInfo = { username, role };
+    localStorage.setItem("user", JSON.stringify(userInfo));
+    setUser(userInfo);
   };
 
   return (
-    <div style={{ textAlign: "center", marginTop: "100px", fontFamily: "Arial" }}>
+    <div style={{ textAlign: "center", marginTop: "100px" }}>
       <h2>🔐 Login</h2>
 
       <input
@@ -41,6 +34,8 @@ export default function Login({ setUser }) {
         style={{ padding: "10px", margin: "10px" }}
       />
 
+      <br />
+
       <input
         type="password"
         placeholder="Password"
@@ -49,6 +44,8 @@ export default function Login({ setUser }) {
         style={{ padding: "10px", margin: "10px" }}
       />
 
+      <br />
+
       <button
         onClick={handleLogin}
         style={{
@@ -56,14 +53,16 @@ export default function Login({ setUser }) {
           background: "#1e90ff",
           color: "white",
           borderRadius: "6px",
-          cursor: "pointer",
           border: "none",
+          marginTop: "10px",
+          cursor: "pointer"
         }}
       >
         Login
       </button>
 
-      {error && <p style={{ color: "red", marginTop: "10px" }}>{error}</p>}
+      {error && <p style={{ color: "red" }}>{error}</p>}
     </div>
   );
 }
+
