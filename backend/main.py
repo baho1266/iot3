@@ -60,7 +60,7 @@ app = FastAPI()
 
 origins = [
     "http://localhost:5173",
-    "https://ee495smarthome.netlify.app",
+    "https://ee-495smarthome.netlify.app",
 ]
 
 app.add_middleware(
