@@ -10,7 +10,7 @@ app = FastAPI()
 
 origins = [
     "http://localhost:5173",
-    "https://iot3.netlify.app"
+    "https://iot5.netlify.app"
 ]
 
 app.add_middleware(
